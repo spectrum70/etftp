@@ -30,20 +30,20 @@ using namespace std;
 
 void getopts::info()
 {
-	cout << "red v." << version << "-g" << GIT_VERSION << "\n";
+	cout << appname << " v." << version << "-g" << GIT_VERSION << "\n";
 }
 
 void getopts::usage()
 {
 	info();
-	cout << "(C) 2021, RED Digital Cinema, LLC\n"
-	     << "Usage: red [OPTION]\n"
-	     << "Example: ./red -v\n"
+	cout << "(C) 2021, kernel-space.org\n"
+	     << "Usage: " << appname << " [OPTION]\n"
+	     << "Example: ./" << appname << " -v\n"
 	     << "Options:\n"
-	     << "  -d IP,  --dest-ip=IP     program version\n"
-	     << "  -h,     --help           this help\n"
-	     << "  -V,     --version        program version\n"
-	     << "  -v                       verbose\n"
+	     << "  -h,  --help        this help\n"
+	     << "  -p,  --path        server root path (def. /srv/tftp)\n"
+	     << "  -V,  --version     program version\n"
+	     << "  -v                 verbose\n"
 	     << "\n";
 }
 
