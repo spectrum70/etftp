@@ -29,7 +29,8 @@ int main(int argc, char **argv)
         getopts get_opts(argc, argv);
         opts options = get_opts.get_options();
 
-	inf << appname << " v." << version << " starting ...\n";
+	inf << appname << " v." << version <<
+		"-g" << GIT_VERSION <<" starting ...\n";
 
 	if (options.verbose) {
 		verb::get().set_verbose();
