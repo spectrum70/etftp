@@ -33,6 +33,8 @@
 constexpr int udp_port = 69;
 constexpr char default_server_path[] = "/srv/tftp/";
 
+constexpr int progress_total_tags = 20;
+
 server::server() : udp_server(udp_port)
 {
 }
@@ -70,6 +72,34 @@ void server::send_opt_ack(struct ctx_client *cc)
 	send(cc->ss, (char*)&pkt, tlen + 2, from_ip, from_port);
 }
 
+void server::display_progress(struct send_data *sd, int block)
+{
+	int tag = block * progress_total_tags / sd->p.blk_total;
+
+	if (tag > sd->p.last_tag) {
+		int tags = tag - sd->p.last_tag;
+
+		while (tags--)
+			printf("█");
+
+		 sd->p.last_tag = tag;
+
+		if (sd->p.last_tag == progress_total_tags)
+			printf("]   ");
+	}
+
+	fflush(stdout);
+}
+
+void server::setup_progress(struct send_data *sd)
+{
+	sd->p.blk_total = sd->tsize / sd->blksize;
+	if (sd->tsize / sd->blksize)
+		sd->p.blk_total++;
+
+	printf("\x1b[33;1m[");
+}
+
 void server::send_block(struct ctx_client *cc, int block)
 {
 	struct packet_out pkt;
@@ -83,6 +113,8 @@ void server::send_block(struct ctx_client *cc, int block)
 	send(cc->ss, (char*)&pkt, size + 4, from_ip, from_port);
 
 	cc->sd->tsize -= size;
+
+	display_progress(cc->sd, block + 1);
 }
 
 struct ctx_client * server::create_new_channel(struct send_data *sd)
@@ -92,6 +124,8 @@ struct ctx_client * server::create_new_channel(struct send_data *sd)
 	if (!cc)
 		err << "cannot create new channel\n";
 
+	memset(cc, 0, sizeof(struct ctx_client));
+
 	cc->ss = new_chan();
 	cc->sd = sd;
 	mc[cc->ss] = cc;
@@ -99,11 +133,17 @@ struct ctx_client * server::create_new_channel(struct send_data *sd)
 	return cc;
 }
 
-void server::do_op_read(struct packet *pkt, struct send_data *sd)
+void server::do_op_read(struct packet *pkt)
 {
 	int len;
 	string file, type, field;
 	char *data = pkt->data;
+
+	struct send_data *sd = new(struct send_data);
+	if (!sd)
+		err << "cannot create send_data struct.\n";
+
+	memset(sd, 0, sizeof(struct send_data));
 
 	len = strlen(data);
 	if (!len)
@@ -142,6 +182,7 @@ exit:
 		struct ctx_client *cc = create_new_channel(sd);
 
 		send_opt_ack(cc);
+ 		setup_progress(sd);
 	}
 }
 
@@ -152,6 +193,7 @@ void server::close_channel(struct ctx_client *cc)
 	shutdown(cc->ss, SHUT_WR);
 	close(cc->sd->fd);
 
+	delete(cc->sd);
 	delete(cc);
 }
 
@@ -187,7 +229,6 @@ int server::run()
 	int rval, fd, fdmax;
 	fd_set rfds;
 	struct timeval tv;
-	struct send_data sd;
 	char buff[max_udp_in_len];
 	bool last = false;
 
@@ -214,7 +255,7 @@ int server::run()
 
 			switch (opcode) {
 			case oc_read:
-				do_op_read(pkt, &sd);
+				do_op_read(pkt);
 				last = false;
 				break;
 			case oc_ack: {
@@ -230,6 +271,7 @@ int server::run()
 						/* Last, removing */
 						close_channel(cc);
 						last = false;
+						inf << "transfer completed\n";
 					}
 					/*
 					 * One more packet should be sent

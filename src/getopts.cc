@@ -49,7 +49,7 @@ void getopts::usage()
 
 void getopts::defaults()
 {
-	options.dest_ip = "localhost";
+	options.server_path = "/srv/tftp";
 }
 
 getopts::getopts(int argc, char **argv)
@@ -63,7 +63,7 @@ getopts::getopts(int argc, char **argv)
 		static struct option long_options[] = {
 			{"help", no_argument, 0, 'h'},
 			{"version", no_argument, 0, 'V'},
-			{"dest-ip", required_argument, 0, 'd'},
+			{"path", required_argument, 0, 'p'},
 			{"", no_argument, 0, 'v'},
 			{0, 0, 0, 0}
 		};
@@ -93,8 +93,8 @@ getopts::getopts(int argc, char **argv)
 			info();
 			exit(-1);
 			break;
-		case 'd':
-			options.dest_ip = optarg;
+		case 'p':
+			options.server_path = optarg;
 			break;
 		default:
 			exit(-2);

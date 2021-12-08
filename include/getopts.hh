@@ -9,7 +9,7 @@ using std::vector;
 
 struct opts {
 	bool verbose;
-	string dest_ip;
+	string server_path;
 	vector<string> nonopts {};
 };
 
