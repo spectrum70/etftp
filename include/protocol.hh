@@ -12,6 +12,10 @@ enum opcode {
 	oc_opt_ack,
 };
 
+enum tftp_errors {
+	err_file_not_found = 1,
+};
+
 struct packet {
 	uint16_t opcode;
 	char data[1024];

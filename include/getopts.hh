@@ -8,6 +8,10 @@ using std::string;
 using std::vector;
 
 struct opts {
+	static opts &get() {
+		static opts o;
+		return o;
+	}
 	bool verbose;
 	string server_path;
 	vector<string> nonopts {};
@@ -15,12 +19,10 @@ struct opts {
 
 struct getopts {
 	getopts(int argc, char **argv);
-	opts & get_options() { return options; }
+private:
 	void defaults();
 	void info();
 	void usage();
-private:
-	opts options {};
 };
 
 #endif /* getopts_hh */

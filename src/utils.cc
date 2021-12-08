@@ -25,6 +25,8 @@
 #include <fstream>
 #include <sstream>
 #include <unistd.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 using namespace std;
 
@@ -66,6 +68,25 @@ int read_proc_file(char *path, string &out)
 
 	return 0;
 }
+
+int dir_exist(const string &path)
+{
+	DIR *dir = opendir(path.c_str());
+
+	if (dir) {
+		/* Directory exists. */
+		closedir(dir);
+		return 1;
+	} else {
+		if (errno == EACCES) {
+			err << "can't access path: " << path << "\n";
+		} else if (errno == ENOENT) {
+			err << "directory <" << path << "> does not exist\n";
+		}
+	}
+	return 0;
+}
+
 }
 
 namespace conv

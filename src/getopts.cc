@@ -49,7 +49,7 @@ void getopts::usage()
 
 void getopts::defaults()
 {
-	options.server_path = "/srv/tftp";
+	opts::get().server_path = "/srv/tftp";
 }
 
 getopts::getopts(int argc, char **argv)
@@ -68,13 +68,13 @@ getopts::getopts(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hvVd:",
+		c = getopt_long(argc, argv, "hvVp:",
 				long_options, &option_index);
 
 		if (c == -1) {
 			if (optind < argc) {
 				while (optind < argc)
-					options.nonopts.
+					opts::get().nonopts.
 						push_back(argv[optind++]);
 				break;
 			}
@@ -87,14 +87,14 @@ getopts::getopts(int argc, char **argv)
 			exit(-1);
 			break;
 		case 'v':
-			options.verbose = true;
+			opts::get().verbose = true;
 			break;
 		case 'V':
 			info();
 			exit(-1);
 			break;
 		case 'p':
-			options.server_path = optarg;
+			opts::get().server_path = optarg;
 			break;
 		default:
 			exit(-2);

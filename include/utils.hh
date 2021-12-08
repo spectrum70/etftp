@@ -10,6 +10,7 @@ namespace fs {
 int get_file_size(char *path);
 int get_file_size(int fd);
 int read_proc_file(char *path, string &out);
+int dir_exist(const string &path);
 }
 
 namespace conv {

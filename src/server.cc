@@ -22,6 +22,7 @@
 #include "server.hh"
 #include "trace.hh"
 #include "utils.hh"
+#include "getopts.hh"
 #include "protocol.hh"
 
 #include <sys/select.h>
@@ -31,8 +32,6 @@
 #include <cstring>
 
 constexpr int udp_port = 69;
-constexpr char default_server_path[] = "/srv/tftp/";
-
 constexpr int progress_total_tags = 20;
 
 server::server() : udp_server(udp_port)
@@ -98,6 +97,18 @@ void server::setup_progress(struct send_data *sd)
 		sd->p.blk_total++;
 
 	printf("\x1b[33;1m[");
+}
+
+void server::send_err(struct ctx_client *cc, int error)
+{
+	struct packet_out pkt;
+
+	pkt.opcode = tools::htons(oc_err);
+	pkt.block = tools::htons(error);
+
+	strcpy(pkt.data, "File not found");
+
+	send(cc->ss, (char*)&pkt, 4 + strlen(pkt.data) + 1, from_ip, from_port);
 }
 
 void server::send_block(struct ctx_client *cc, int block)
@@ -175,14 +186,21 @@ void server::do_op_read(struct packet *pkt)
 exit:
 	inf << "requested file : " << file << "\n";
 
-	sd->fd = open((string(default_server_path) + file).c_str(), O_RDONLY);
+	struct ctx_client *cc = create_new_channel(sd);
+
+	sd->fd = open((opts::get().server_path + "/" + file).c_str(), O_RDONLY);
 	if (sd->fd >= 0) {
 		sd->tsize = fs::get_file_size(sd->fd);
 
-		struct ctx_client *cc = create_new_channel(sd);
-
 		send_opt_ack(cc);
  		setup_progress(sd);
+	} else {
+		inf << "file not found, closing\n";
+
+		struct ctx_client *cc = create_new_channel(sd);
+
+		send_err(cc, err_file_not_found);
+		close_channel(cc);
 	}
 }
 
@@ -231,6 +249,11 @@ int server::run()
 	struct timeval tv;
 	char buff[max_udp_in_len];
 	bool last = false;
+
+	if (!fs::dir_exist(opts::get().server_path)) {
+		err << "can't access server path\n";
+		exit(1);
+	}
 
 	fd = get_fd();
 	mc[fd] = 0;

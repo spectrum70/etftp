@@ -26,16 +26,15 @@
 
 int main(int argc, char **argv)
 {
-        getopts get_opts(argc, argv);
-        opts options = get_opts.get_options();
+	getopts get_opts(argc, argv);
 
 	inf << appname << " v." << version <<
 		"-g" << GIT_VERSION <<" starting ...\n";
 
-	if (options.verbose) {
+	if (opts::get().verbose) {
 		verb::get().set_verbose();
 
-		msg << "verbosity enabled ...\n";
+		msg << "verbosity enabled ...";
 	}
 
 	server s;
