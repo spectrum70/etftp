@@ -32,7 +32,7 @@
 #include <cstring>
 
 constexpr int udp_port = 69;
-constexpr int progress_total_tags = 20;
+constexpr int progress_total_tags = 32;
 
 server::server() : udp_server(udp_port)
 {
@@ -76,15 +76,19 @@ void server::display_progress(struct send_data *sd, int block)
 	int tag = block * progress_total_tags / sd->p.blk_total;
 
 	if (tag > sd->p.last_tag) {
-		int tags = tag - sd->p.last_tag;
+		int segments = tag - sd->p.last_tag;
 
-		while (tags--)
+		if ((segments + sd->p.last_tag) > progress_total_tags)
+			segments = progress_total_tags - sd->p.last_tag;
+
+		while (segments--)
 			printf("█");
 
-		 sd->p.last_tag = tag;
+		sd->p.last_tag = tag;
 
-		if (sd->p.last_tag == progress_total_tags)
+		if (tag == progress_total_tags) {
 			printf("]   ");
+		}
 	}
 
 	fflush(stdout);
@@ -96,7 +100,11 @@ void server::setup_progress(struct send_data *sd)
 	if (sd->tsize / sd->blksize)
 		sd->p.blk_total++;
 
+	sd->p.last_tag = 0;
+
 	printf("\x1b[33;1m[");
+	printf("\x1b[%dC\x1b[33;1m]", progress_total_tags);
+	printf("\x1b[%dD", progress_total_tags + 1);
 }
 
 void server::send_err(struct ctx_client *cc, int error)
@@ -255,6 +263,8 @@ int server::run()
 		exit(1);
 	}
 
+	inf << "server path : " << opts::get().server_path << "\n";
+	inf << "listening for requests ...\n";
 	fd = get_fd();
 	mc[fd] = 0;
 

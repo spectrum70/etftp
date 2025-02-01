@@ -24,12 +24,19 @@
 #include "server.hh"
 #include "trace.hh"
 
+void intro()
+{
+	inf << "\x1b[33;1mWelcome to "
+	    << "\x1b[33;1me\x1b[34;1mt\x1b[33;1mf\x1b[34;1mt\x1b[33;1mp"
+	    << "\x1b[0;1m" <<  " v." << version
+	    << "-g" << GIT_VERSION <<" server\n";
+}
+
 int main(int argc, char **argv)
 {
 	getopts get_opts(argc, argv);
 
-	inf << appname << " v." << version <<
-		"-g" << GIT_VERSION <<" starting ...\n";
+	intro();
 
 	if (opts::get().verbose) {
 		verb::get().set_verbose();
