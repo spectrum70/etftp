@@ -5,11 +5,12 @@ etftp is a simple tftp server for embedded systems, created to make the life eas
 
 ## Build
 
+`
 git clone git@gitlab.com:spectrum70/etftp.git
 cd etftp
 make
 sudo make install
-
+`
 Profit !
 
 
