@@ -1,15 +1,19 @@
-# etftp
-
 ![](etftp.png)
 
-<img src="https://gitlab.com/spectrum70/etftp/-/master/etftp.png" align="center" height="350" width="600"/>
 
+etftp is a simple tftp server for embedded systems, created to make the life easier comparing to known existing tftp servers, often not that small and generally hard to configure. 
 
-etftp
+## Build
 
-A small tftp server.
+git clone git@gitlab.com:spectrum70/etftp.git
+cd etftp
+make
+sudo make install
+
+Profit !
+
 
 LICENSE: GPL2+
 
-Author: Angelo Dureghello <angelo.dureghello@timesys.com>
+Author: Angelo Dureghello <angelo@kernel-space.org>
 
