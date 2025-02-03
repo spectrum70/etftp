@@ -59,12 +59,12 @@ void server::send_opt_ack(struct ctx_client *cc)
 	tlen += (field.size() + 1);
 	strcat(data + tlen, "tsize");
 	tlen += 6;
-	field = conv::itoa(cc->sd->tsize);
+	field = conv::itoa(cc->sd->total_size);
 	strcat(data + tlen, field.c_str());
 	tlen += (field.size() + 1);
 	strcat(data + tlen, "blksize");
 	tlen += 8;
-	field = conv::itoa(cc->sd->blksize);
+	field = conv::itoa(cc->sd->blk_size);
 	strcat(data + tlen, field.c_str());
 	tlen += (field.size() + 1);
 
@@ -96,8 +96,8 @@ void server::display_progress(struct send_data *sd, int block)
 
 void server::setup_progress(struct send_data *sd)
 {
-	sd->p.blk_total = sd->tsize / sd->blksize;
-	if (sd->tsize / sd->blksize)
+	sd->p.blk_total = sd->total_size / sd->blk_size;
+	if (sd->total_size / sd->blk_size)
 		sd->p.blk_total++;
 
 	sd->p.last_tag = 0;
@@ -126,12 +126,12 @@ void server::send_block(struct ctx_client *cc, int block)
 	pkt.opcode = tools::htons(oc_data);
 	pkt.block = tools::htons(block + 1);
 
-	int size = math::min(cc->sd->blksize, cc->sd->tsize);
+	int size = math::min(cc->sd->blk_size, cc->sd->total_size);
 
 	read(cc->sd->fd, pkt.data, size);
 	send(cc->ss, (char*)&pkt, size + 4, from_ip, from_port);
 
-	cc->sd->tsize -= size;
+	cc->sd->total_size -= size;
 
 	display_progress(cc->sd, block + 1);
 }
@@ -183,27 +183,29 @@ void server::do_op_read(struct packet *pkt)
 		field = data;
 		data += (len + 1);
 		if (field == "blksize") {
-			sd->blksize = atoi(data);
+			sd->blk_size = atoi(data);
 		} else if (field == "tsize") {
-			sd->tsize = atoi(data);
+			sd->total_size = atoi(data);
 		} else if (field == "timeout") {
 			sd->timeout = atoi(data);
 		}
 	}
 
 exit:
+
 	inf << "requested file : " << file << "\n";
+	inf << "requested block size: " << sd->blk_size << "\n";
 
 	struct ctx_client *cc = create_new_channel(sd);
 
 	sd->fd = open((opts::get().server_path + "/" + file).c_str(), O_RDONLY);
 	if (sd->fd >= 0) {
-		sd->tsize = fs::get_file_size(sd->fd);
+		sd->total_size = fs::get_file_size(sd->fd);
 
 		send_opt_ack(cc);
  		setup_progress(sd);
 	} else {
-		inf << "file not found, closing\n";
+		err << "file not found, closing\n";
 
 		struct ctx_client *cc = create_new_channel(sd);
 
@@ -299,7 +301,7 @@ int server::run()
 
 				send_block(cc, block);
 
-				if (!cc->sd->tsize) {
+				if (!cc->sd->total_size) {
 					if (last) {
 						/* Last, removing */
 						close_channel(cc);

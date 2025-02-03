@@ -17,8 +17,8 @@ struct progress {
 struct send_data {
 	int fd;
 	int timeout;
-	int tsize;
-	int blksize;
+	int total_size;
+	int blk_size;
 	struct progress p;
 };
 

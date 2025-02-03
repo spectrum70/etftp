@@ -24,7 +24,7 @@ struct packet {
 struct packet_out {
 	uint16_t opcode;
 	uint16_t block;
-	char data[4096];
+	char data[1024 * 32];
 } __attribute__((packed));
 
 namespace tools {
