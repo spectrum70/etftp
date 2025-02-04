@@ -74,6 +74,7 @@ void server::send_opt_ack(struct ctx_client *cc)
 void server::display_progress(struct send_data *sd, int block)
 {
 	int tag = block * progress_total_tags / sd->p.blk_total;
+	int percent;
 
 	if (tag > sd->p.last_tag) {
 		int segments = tag - sd->p.last_tag;
@@ -82,14 +83,22 @@ void server::display_progress(struct send_data *sd, int block)
 			segments = progress_total_tags - sd->p.last_tag;
 
 		while (segments--)
-			printf("█");
+			printf("\x1b[31;1m▇");
 
 		sd->p.last_tag = tag;
 
 		if (tag == progress_total_tags) {
-			printf("]   ");
+			printf("\x1b[33;1m]   \x1b[?25h");
+			return;
 		}
 	}
+
+
+	/* Print percentage */
+	percent = block * 100 / sd->p.blk_total;
+	printf("\x1b""7");
+	printf("\x1b[%dC \x1b[0m%2d%%", (progress_total_tags - tag + 1), percent);
+	printf("\x1b""8");
 
 	fflush(stdout);
 }
@@ -103,8 +112,11 @@ void server::setup_progress(struct send_data *sd)
 	sd->p.last_tag = 0;
 
 	printf("\x1b[33;1m[");
-	printf("\x1b[%dC\x1b[33;1m]", progress_total_tags);
+	for (int i = 0; i < progress_total_tags; ++i)
+		printf("-");
+	printf("\x1b[33;1m]");
 	printf("\x1b[%dD", progress_total_tags + 1);
+	printf("\x1b[?25l");
 }
 
 void server::send_err(struct ctx_client *cc, int error)
@@ -193,7 +205,7 @@ void server::do_op_read(struct packet *pkt)
 
 exit:
 
-	inf << "requested file : " << file << "\n";
+	inf << "requested file: " << file << "\n";
 	inf << "requested block size: " << sd->blk_size << "\n";
 
 	struct ctx_client *cc = create_new_channel(sd);

@@ -11,8 +11,8 @@ using std::string;
 
 /* vt100 stuff */
 
-static __attribute__((unused)) const char *msg = {"\x1b[1;37m"};
-static __attribute__((unused)) const char *imp = {"\x1b[1;33m"};
+static __attribute__((unused)) const char *msg = {"\x1b[0m"};
+static __attribute__((unused)) const char *imp = {"\x1b[0m"};
 static __attribute__((unused)) const char *dbg = {"\x1b[1;32m"};
 
 static __attribute__((unused)) const char *err = {"\x1b[1;31m+++err: "};
