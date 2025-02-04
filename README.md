@@ -26,6 +26,8 @@ Options:
   -v                 verbose
 ```
 
+![](etftp-console.png)
+
 LICENSE: GPL2+
 
 Author: Angelo Dureghello <angelo@kernel-space.org>
