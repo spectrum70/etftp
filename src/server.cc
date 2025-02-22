@@ -93,7 +93,6 @@ void server::display_progress(struct send_data *sd, int block)
 		}
 	}
 
-
 	/* Print percentage */
 	percent = block * 100 / sd->p.blk_total;
 	printf("\x1b""7");
@@ -140,12 +139,23 @@ void server::send_block(struct ctx_client *cc, int block)
 
 	int size = math::min(cc->sd->blk_size, cc->sd->total_size);
 
+	/*
+	 * Resend, so read back one block.
+	 * TODO: evaluate if reading from memory can be faster, and possible.
+	 */
+	if (block == last_block)
+		lseek(cc->sd->fd, -size, SEEK_CUR);
+
 	read(cc->sd->fd, pkt.data, size);
 	send(cc->ss, (char*)&pkt, size + 4, from_ip, from_port);
 
-	cc->sd->total_size -= size;
+	/* Don't update progress on resend */
+	if (block != last_block) {
+		cc->sd->total_size -= size;
+		display_progress(cc->sd, block + 1);
+	}
 
-	display_progress(cc->sd, block + 1);
+	last_block = block;
 }
 
 struct ctx_client * server::create_new_channel(struct send_data *sd)
@@ -164,10 +174,29 @@ struct ctx_client * server::create_new_channel(struct send_data *sd)
 	return cc;
 }
 
+bool server::fetch_option(char **str, string &data)
+{
+	int len = strlen(*str);
+
+	if (!len)
+		return false;
+
+	data = string(*str);
+	*str += (len + 1);
+
+	return true;
+}
+
+/*
+ * There are 2 tftp revisions,
+ * Supposing eveyone uses rev 2. (RFC1350)
+ * | Opcode | Filename | 0 | Mode | 0 |
+ * Plus eventually extension to know file size (RFC 2347)
+ * |  opc   | filename | 0 | mode | 0 |  opt1  | 0 | value1 | 0 | ...
+ */
 void server::do_op_read(struct packet *pkt)
 {
-	int len;
-	string file, type, field;
+	string file, mode, field;
 	char *data = pkt->data;
 
 	struct send_data *sd = new(struct send_data);
@@ -176,24 +205,19 @@ void server::do_op_read(struct packet *pkt)
 
 	memset(sd, 0, sizeof(struct send_data));
 
-	len = strlen(data);
-	if (!len)
+	if (!fetch_option(&data, file))
 		return;
-	file = string(data);
+	if (!fetch_option(&data, mode))
+		return;
 
-	data += (len + 1);
-	len = strlen(data);
-	if (!len)
-		goto exit;
-	type = string(data);
-	data += (len + 1);
+	if (mode != "octet") {
+		inf << "not octet mode, exiting.\n";
+		return;
+	}
 
 	for (;;) {
-		len = strlen(data);
-		if (!len)
+		if (!fetch_option(&data, field))
 			break;
-		field = data;
-		data += (len + 1);
 		if (field == "blksize") {
 			sd->blk_size = atoi(data);
 		} else if (field == "tsize") {
@@ -203,10 +227,14 @@ void server::do_op_read(struct packet *pkt)
 		}
 	}
 
-exit:
-
 	inf << "requested file: " << file << "\n";
-	inf << "requested block size: " << sd->blk_size << "\n";
+
+	if (sd->blk_size) {
+		inf << "requested block size: " << sd->blk_size << "\n";
+	} else {
+		inf << "blocksize not specified, defaulting to 1468\n";
+		sd->blk_size = 1468;
+	}
 
 	struct ctx_client *cc = create_new_channel(sd);
 
@@ -312,6 +340,7 @@ int server::run()
 				struct ctx_client *cc = mc[fd];
 
 				send_block(cc, block);
+				last_block = block;
 
 				if (!cc->sd->total_size) {
 					if (last) {
@@ -328,7 +357,17 @@ int server::run()
 				}
 				break;
 			}
+			case oc_write:
+				printf("oc_write!\n");
+				break;
+			case oc_data:
+				printf("data!\n");
+				break;
+			case oc_err:
+				printf("err +++\n");
+				break;
 			default:
+				printf("oc not recognized %d\n", opcode);
 				break;
 			}
 		}

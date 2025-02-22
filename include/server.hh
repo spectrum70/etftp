@@ -35,6 +35,7 @@ struct server : public udp_server {
 	void send_opt_ack(struct ctx_client *cc);
 	void send_block(struct ctx_client *cc, int block);
 	void send_err(struct ctx_client *cc, int error);
+	bool fetch_option(char **str, string &data);
 	struct ctx_client * create_new_channel(struct send_data *sd);
 	void close_channel(struct ctx_client *cc);
 	int setup_fds(fd_set *rfds);
@@ -46,6 +47,7 @@ struct server : public udp_server {
 private:
 	bool sending;
 	int total_blocks;
+	int last_block;
 	string server_path;
 
 	typedef map<int, struct ctx_client *> map_ctx;
