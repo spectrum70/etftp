@@ -45,13 +45,13 @@ public:
 	void start();
 	int get_fd();
 	int receive(int fd, char *data);
+	void clear_from();
 
 protected:
-	string from_ip;
-	int from_port;
+	string from_ip {};
+	int from_port {};
 
 private:
-
 	int lport;
 };
 

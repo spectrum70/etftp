@@ -31,7 +31,7 @@ struct server : public udp_server {
 	server();
 	server(int port);
 
-	void do_op_read(struct packet *pkt);
+	int do_op_read(struct packet *pkt);
 	void send_opt_ack(struct ctx_client *cc);
 	void send_block(struct ctx_client *cc, int block);
 	void send_err(struct ctx_client *cc, int error);

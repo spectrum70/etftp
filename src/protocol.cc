@@ -23,7 +23,7 @@
 
 namespace tools {
 
-uint16_t ntohs(uint16_t n) {
+uint16_t n2hs(uint16_t n) {
 	uint16_t rval;
 
 	((char *)&rval)[0] = ((char *)&n)[1];
@@ -32,6 +32,6 @@ uint16_t ntohs(uint16_t n) {
 	return rval;
 }
 
-uint16_t htons(uint16_t n) { return ntohs(n); }
+uint16_t h2ns(uint16_t n) { return n2hs(n); }
 
 }

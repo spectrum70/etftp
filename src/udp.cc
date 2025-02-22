@@ -166,6 +166,12 @@ int udp_server::get_fd()
 	return b->fd();
 }
 
+void udp_server::clear_from()
+{
+	from_ip = "";
+	from_port = 0;
+}
+
 int udp_server::receive(int fd, char *data)
 {
 	struct sockaddr_in srcaddr;
@@ -174,8 +180,11 @@ int udp_server::receive(int fd, char *data)
 	int rval = recvfrom(fd, data, max_udp_in_len, 0,
 		 (struct sockaddr *)&srcaddr, &addrlen);
 
-	from_ip = inet_ntoa(srcaddr.sin_addr);
-	from_port = ntohs(srcaddr.sin_port);
+	/* Avoid to do this at every receive */
+	if (!from_ip.size()) {
+		from_ip = inet_ntoa(srcaddr.sin_addr);
+		from_port = ntohs(srcaddr.sin_port);
+	}
 
 	return rval;
 }

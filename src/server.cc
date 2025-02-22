@@ -27,6 +27,7 @@
 
 #include <sys/select.h>
 #include <sys/socket.h>
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
@@ -51,7 +52,7 @@ void server::send_opt_ack(struct ctx_client *cc)
 
 	memset(&pkt, 0, sizeof(struct packet));
 
-	pkt.opcode = tools::htons(oc_opt_ack);
+	pkt.opcode = tools::h2ns(oc_opt_ack);
 	strcat(data + tlen, "timeout");
 	tlen += 8;
 	field = conv::itoa(cc->sd->timeout);
@@ -122,8 +123,8 @@ void server::send_err(struct ctx_client *cc, int error)
 {
 	struct packet_out pkt;
 
-	pkt.opcode = tools::htons(oc_err);
-	pkt.block = tools::htons(error);
+	pkt.opcode = tools::h2ns(oc_err);
+	pkt.block = tools::h2ns(error);
 
 	strcpy(pkt.data, "File not found");
 
@@ -134,8 +135,8 @@ void server::send_block(struct ctx_client *cc, int block)
 {
 	struct packet_out pkt;
 
-	pkt.opcode = tools::htons(oc_data);
-	pkt.block = tools::htons(block + 1);
+	pkt.opcode = tools::h2ns(oc_data);
+	pkt.block = tools::h2ns(block + 1);
 
 	int size = math::min(cc->sd->blk_size, cc->sd->total_size);
 
@@ -194,25 +195,27 @@ bool server::fetch_option(char **str, string &data)
  * Plus eventually extension to know file size (RFC 2347)
  * |  opc   | filename | 0 | mode | 0 |  opt1  | 0 | value1 | 0 | ...
  */
-void server::do_op_read(struct packet *pkt)
+int server::do_op_read(struct packet *pkt)
 {
 	string file, mode, field;
 	char *data = pkt->data;
 
 	struct send_data *sd = new(struct send_data);
-	if (!sd)
+	if (!sd) {
 		err << "cannot create send_data struct.\n";
+		return -1;
+	}
 
 	memset(sd, 0, sizeof(struct send_data));
 
 	if (!fetch_option(&data, file))
-		return;
+		return -1;
 	if (!fetch_option(&data, mode))
-		return;
+		return -1;
 
 	if (mode != "octet") {
 		inf << "not octet mode, exiting.\n";
-		return;
+		return -1;
 	}
 
 	for (;;) {
@@ -241,9 +244,14 @@ void server::do_op_read(struct packet *pkt)
 
 		send_err(cc, err_file_not_found);
 		close_channel(cc);
+
+		return -1;
 	}
 
-	inf << "requested file: " << file << ", size: " << sd->total_size << " bytes\n";
+	inf << "requested file: " << file
+	    << ", size: " << sd->total_size << " bytes\n";
+
+	inf << "from ip: " << from_ip << "\n";
 
 	if (sd->blk_size) {
 		inf << "requested block size: " << sd->blk_size << "\n";
@@ -254,10 +262,14 @@ void server::do_op_read(struct packet *pkt)
 
 	setup_progress(sd);
 
+	return 0;
+
 }
 
 void server::close_channel(struct ctx_client *cc)
 {
+	clear_from();
+
 	mc.erase(cc->ss);
 
 	shutdown(cc->ss, SHUT_WR);
@@ -328,15 +340,16 @@ int server::run()
 
 		if (receive(fd, buff)) {
 			struct packet *pkt = (struct packet *)buff;
-			int opcode = tools::ntohs(pkt->opcode);
+			int opcode = tools::n2hs(pkt->opcode);
 
 			switch (opcode) {
 			case oc_read:
-				do_op_read(pkt);
+				if (do_op_read(pkt) != 0)
+					return -1;
 				last = false;
 				break;
 			case oc_ack: {
-				int block = tools::ntohs
+				int block = tools::n2hs
 						(*(uint16_t *)pkt->data);
 
 				struct ctx_client *cc = mc[fd];

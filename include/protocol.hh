@@ -28,8 +28,8 @@ struct packet_out {
 } __attribute__((packed));
 
 namespace tools {
-uint16_t ntohs(uint16_t val);
-uint16_t htons(uint16_t val);
+uint16_t n2hs(uint16_t val);
+uint16_t h2ns(uint16_t val);
 }
 
 struct protocol {
