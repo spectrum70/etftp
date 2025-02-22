@@ -227,7 +227,23 @@ void server::do_op_read(struct packet *pkt)
 		}
 	}
 
-	inf << "requested file: " << file << "\n";
+	struct ctx_client *cc = create_new_channel(sd);
+
+	sd->fd = open((opts::get().server_path + "/" + file).c_str(), O_RDONLY);
+	if (sd->fd >= 0) {
+		sd->total_size = fs::get_file_size(sd->fd);
+		send_opt_ack(cc);
+
+	} else {
+		err << "file <" << file << "> not found, closing\n";
+
+		struct ctx_client *cc = create_new_channel(sd);
+
+		send_err(cc, err_file_not_found);
+		close_channel(cc);
+	}
+
+	inf << "requested file: " << file << ", size: " << sd->total_size << " bytes\n";
 
 	if (sd->blk_size) {
 		inf << "requested block size: " << sd->blk_size << "\n";
@@ -236,22 +252,8 @@ void server::do_op_read(struct packet *pkt)
 		sd->blk_size = 1468;
 	}
 
-	struct ctx_client *cc = create_new_channel(sd);
+	setup_progress(sd);
 
-	sd->fd = open((opts::get().server_path + "/" + file).c_str(), O_RDONLY);
-	if (sd->fd >= 0) {
-		sd->total_size = fs::get_file_size(sd->fd);
-
-		send_opt_ack(cc);
- 		setup_progress(sd);
-	} else {
-		err << "file not found, closing\n";
-
-		struct ctx_client *cc = create_new_channel(sd);
-
-		send_err(cc, err_file_not_found);
-		close_channel(cc);
-	}
 }
 
 void server::close_channel(struct ctx_client *cc)
@@ -339,20 +341,19 @@ int server::run()
 
 				struct ctx_client *cc = mc[fd];
 
+				if (last) {
+					/* Last, removing */
+					close_channel(cc);
+					last = false;
+					inf << "transfer completed\n";
+					break;
+				}
+
 				send_block(cc, block);
 				last_block = block;
 
 				if (!cc->sd->total_size) {
-					if (last) {
-						/* Last, removing */
-						close_channel(cc);
-						last = false;
-						inf << "transfer completed\n";
-					}
-					/*
-					 * One more packet should be sent
-					 * at the end.
-					 */
+					/* Exit on ack at the end. */
 					last = true;
 				}
 				break;
